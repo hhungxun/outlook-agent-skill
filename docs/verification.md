@@ -4,7 +4,7 @@ Initial verification: 2026-10-26. Experimental v0.1.0; this is not a production/
 
 ## Automated
 
-- `python3 -m unittest discover -s tests -v`: 51 executed tests passing after review fixes (the Graph and REST suites intentionally inherit the same behaviour tests).
+- `python3 -m unittest discover -s tests -v`: 53 executed tests passing after review and release-check fixes (the Graph and REST suites intentionally inherit the same behaviour tests).
 - `python3 -m compileall -q skills tests`: passing.
 - Tests exercise the public CLI against synthetic Graph and REST servers, pagination, scope/account checks, attachments, native reply drafts, request receipts, plan/apply/undo, lost-response reconciliation and later user changes.
 - Real loopback HTTP tests use synthetic tokens and a controlled remote transport to exercise pairing/Host rejection, account screening before persistence, private installation links, no wildcard CORS and paired shutdown.
@@ -29,6 +29,6 @@ Two independent read-only reviewers inspected implementation commit 6f05107 agai
 Initial verdict: OK WITH NOTES. Applied defence-in-depth runtime-data ignores/scanning, CI JavaScript syntax checking, explicit autostart-helper consent, stronger URL traversal/JS expiry screening, clearer uncertain-write wording and documented security test seams. The reviewer inferred test count from method definitions; the parent verified executed test counts via unittest discovery, including inherited provider suites.
 
 ### Spec
-Initial verdict: BLOCK for reapplying a journal after a later user read-state edit. Reproduced it as a failing regression; fixed historical read-state comparison while retaining immediate per-move verification. Added regression tests for interrupted undo, uncertain folder creation, mixed eligible/ineligible snapshots and canonical legacy REST reply-action casing. Corrected disconnect documentation. Final automated suite: 51 passing tests. One review round; no claim that reviewers re-ran the fixes.
+Initial verdict: BLOCK for reapplying a journal after a later user read-state edit. Reproduced it as a failing regression; fixed historical read-state comparison while retaining immediate per-move verification. Added regression tests for interrupted undo, uncertain folder creation, mixed eligible/ineligible snapshots and canonical legacy REST reply-action casing. Corrected disconnect documentation. After review fixes: 51 passing tests. Two further regression tests reproduce Windows legacy text decoding and installation beneath a parent `.pi` directory; v0.1.1 fixes both release-checker failures. Final automated suite: 53 passing tests. One review round; no claim that reviewers re-ran the fixes.
 
 The main remaining limitations are the new browser install flow not yet human-tested under normal browser protections, optional Graph OAuth without a live tenant test, and no automatic startup installer beyond Linux/systemd. Technical claims are limited to the evidence above.

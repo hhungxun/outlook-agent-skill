@@ -37,7 +37,7 @@ def main():
     files = [p for p in files if p]
     for name in files:
         p = ROOT / name
-        if set(p.parts) & FORBIDDEN_PARTS or p.name in FORBIDDEN_NAMES or p.name.endswith('.user.js') or p.suffix in ('.pdf', '.jpg', '.png', '.log', '.token'):
+        if set(Path(name).parts) & FORBIDDEN_PARTS or p.name in FORBIDDEN_NAMES or p.name.endswith('.user.js') or p.suffix in ('.pdf', '.jpg', '.png', '.log', '.token'):
             failures.append('Runtime/private/binary path in release: ' + name)
         if p.is_symlink():
             failures.append('Symlink in release: ' + name)
@@ -52,10 +52,10 @@ def main():
         seen.add(oid)
         if git('cat-file', '-t', oid).strip() == b'blob':
             scan(git('cat-file', '-p', oid), 'history blob ' + oid, failures)
-    package = json.loads((ROOT / 'package.json').read_text())
+    package = json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))
     assert package['pi']['skills'] == ['./skills/outlook-mail']
     skill = ROOT / 'skills/outlook-mail/SKILL.md'
-    text = skill.read_text()
+    text = skill.read_text(encoding='utf-8')
     assert text.startswith('---\n')
     frontmatter = text.split('---', 2)[1]
     assert re.search(r'^name: outlook-mail$', frontmatter, re.M)
@@ -66,7 +66,7 @@ def main():
     for name in files:
         p = ROOT / name
         if p.suffix == '.md' and p.is_file():
-            for link in re.findall(r'\]\(([^)]+)\)', p.read_text()):
+            for link in re.findall(r'\]\(([^)]+)\)', p.read_text(encoding='utf-8')):
                 if '://' not in link and not link.startswith('#'):
                     target = link.split('#', 1)[0]
                     if target and not (p.parent / target).exists():

@@ -1,6 +1,6 @@
 {
   "name": "outlook-agent-skill",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Portable draft-only Outlook Agent Skill with reversible mailbox organisation",
   "license": "MIT",
