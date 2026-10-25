@@ -84,6 +84,11 @@ class Client:
         return url + ("?" + parse.urlencode(params) if params else "")
 
     def safe_url(self, url):
+        decoded_path = parse.urlsplit(url).path
+        for _ in range(3):
+            decoded_path = parse.unquote(decoded_path)
+        if any(part in ('.', '..') for part in decoded_path.replace('\\', '/').split('/')):
+            raise MailError('unsafe_url', 'Refusing dot-segment traversal in a provider URL.')
         candidate, base = parse.urlsplit(url), parse.urlsplit(self.base)
         if (candidate.scheme != base.scheme or candidate.netloc != base.netloc or
                 candidate.username or candidate.password or candidate.fragment or
@@ -97,7 +102,7 @@ class Client:
             payload = rest_payload(payload)
         return normalise(self.transport(method, url, self.token, payload))
 
-    def pages(self, path, params=None, limit=50):
+    def pages(self, path, params=None, limit=50, accept=None):
         if not 1 <= limit <= 1000:
             raise ValueError("Limit must be between 1 and 1000")
         result, seen = [], set()
@@ -109,7 +114,8 @@ class Client:
             if len(seen) > 1000:
                 raise MailError("pagination_limit", "Too many mailbox pages.")
             page = self.call("GET", url, absolute=True)
-            result.extend(page.get("value", []))
+            values = page.get("value", [])
+            result.extend(values if accept is None else [m for m in values if accept(m)])
             url = page.get("@odata.nextLink")
         return result[:limit]
 
@@ -145,8 +151,15 @@ class Client:
             params.pop("$orderby")
             params["$search"] = json.dumps(query, ensure_ascii=False)
         items = self.pages("me/mailFolders/" + parse.quote(fid, safe="") + "/messages",
-                           params, limit=limit)
+                           params, limit=limit,
+                           accept=(lambda m: not m.get('isDraft')) if fid == 'inbox' else None)
         return items
+
+    def reply_draft(self, mid, reply_all=False):
+        action = 'createReplyAll' if reply_all else 'createReply'
+        if self.backend == 'outlook-rest':
+            action = action.lower()
+        return self.call('POST', 'me/messages/' + parse.quote(mid, safe='') + '/' + action, {})
 
     def move(self, mid, destination):
         return self.call("POST", "me/messages/" + parse.quote(mid, safe="") + "/move",

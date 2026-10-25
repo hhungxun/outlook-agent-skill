@@ -17,7 +17,7 @@ PATTERNS = [
     re.compile(r'(?i)@[a-z0-9.-]*xmu\.edu\.my'),
     re.compile(r'(?i)(?:sk-proj-|sk-ant-)[A-Za-z0-9_-]{20,}'),
 ]
-FORBIDDEN_PARTS = {'mail', 'cache', 'journals', 'mail-organisation', 'attachments', 'runtime', '.venv'}
+FORBIDDEN_PARTS = {'mail', 'cache', 'journals', 'mail-organisation', 'attachments', 'runtime', '.venv', 'receipts', 'plans', '.pi'}
 FORBIDDEN_NAMES = {'config.json', 'pump.json', 'pump-status.json', 'session-token', '.owa-token', 'oauth-cache.json', 'outlook-mail-pump.user.js'}
 
 
@@ -37,7 +37,7 @@ def main():
     files = [p for p in files if p]
     for name in files:
         p = ROOT / name
-        if set(p.parts) & FORBIDDEN_PARTS or p.name in FORBIDDEN_NAMES or p.suffix in ('.pdf', '.jpg', '.png', '.log', '.token'):
+        if set(p.parts) & FORBIDDEN_PARTS or p.name in FORBIDDEN_NAMES or p.name.endswith('.user.js') or p.suffix in ('.pdf', '.jpg', '.png', '.log', '.token'):
             failures.append('Runtime/private/binary path in release: ' + name)
         if p.is_symlink():
             failures.append('Symlink in release: ' + name)

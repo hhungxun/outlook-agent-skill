@@ -30,6 +30,7 @@
       const claims = JSON.parse(atob(part + "=".repeat((4 - part.length % 4) % 4)));
       if (claims.aud !== "https://outlook.office.com" ||
           !String(claims.scp || "").split(/\s+/).includes("Mail.ReadWrite") ||
+          typeof claims.exp !== "number" || !Number.isFinite(claims.exp) ||
           claims.exp < Date.now() / 1000 + 60) return;
     } catch (_) { return; }
     pending = token;

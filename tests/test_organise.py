@@ -78,6 +78,51 @@ class OrganisationTest(unittest.TestCase):
         code, result = self.call('organise', 'assign', path, '--topic', 'Deleted Items', '--message-id', 'one')
         self.assertEqual(code, 2)
 
+    def test_reapply_preserves_later_read_changes_without_moving_again(self):
+        path = self.plan()
+        code, result = self.call('organise', 'apply', path)
+        self.assertEqual(code, 0, result)
+        self.api.messages['one-moved']['isRead'] = True
+        code, result = self.call('organise', 'apply', path)
+        self.assertEqual(code, 0, result)
+        self.assertEqual(result['verified'], 2)
+        self.assertEqual(self.api.moves, 2)
+        self.assertTrue(self.api.messages['one-moved']['isRead'])
+
+    def test_interrupted_undo_reconciles_without_duplicate_restore(self):
+        path = self.plan()
+        code, result = self.call('organise', 'apply', path)
+        journal = result['journal']
+        self.api.fail_after_move = True
+        code, result = self.call('organise', 'undo', journal)
+        self.assertEqual(code, 2)
+        self.assertEqual(self.api.moves, 3)
+        code, result = self.call('organise', 'undo', journal)
+        self.assertEqual(code, 0, result)
+        self.assertEqual(result['restored'], 2)
+        self.assertEqual(self.api.moves, 4)
+        self.assertTrue(all(m['parentFolderId'] == 'inbox' for m in self.api.messages.values()))
+
+    def test_uncertain_folder_creation_is_reused_not_duplicated(self):
+        path = self.plan()
+        self.api.fail_after_folder = True
+        code, result = self.call('organise', 'apply', path)
+        self.assertEqual(code, 2)
+        self.assertEqual(self.api.moves, 0)
+        code, result = self.call('organise', 'apply', path)
+        self.assertEqual(code, 0, result)
+        self.assertEqual(list(self.api.folders.values()).count('Physics'), 1)
+        self.assertEqual(self.api.moves, 2)
+
+    def test_plan_reports_ineligible_items_without_rejecting_eligible_mail(self):
+        self.connect()
+        del self.api.messages['two']['internetMessageId']
+        code, result = self.call('organise', 'plan', '--limit', '2')
+        self.assertEqual(code, 0, result)
+        self.assertEqual(result['count'], 1)
+        self.assertEqual(result['skipped_count'], 1)
+        self.assertEqual(result['skipped'][0]['id'], 'two')
+
     def test_duplicate_identity_reconciliation_stops_conservatively(self):
         path = self.plan()
         self.api.fail_after_move = True

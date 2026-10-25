@@ -23,7 +23,7 @@ Linux/systemd, agent command:
 pump setup --account user@example.org --start --open
 ```
 
-This creates private state, installs/starts only `outlook-mail-pump.service` and opens a local userscript-install URL. Ask the user to approve installation in Tampermonkey, then reload Outlook and open a message. Run `doctor` to verify. No token paste, no manual userscript editing, no LNA/security-pref changes. Do not overwrite another tool's pump/service.
+First explain the background helper and obtain explicit approval to install an autostarting local service. This creates private state, installs/starts only `outlook-mail-pump.service` and opens a local userscript-install URL. Ask the user to approve installation in Tampermonkey, then reload Outlook and open a message. Run `doctor` to verify. No token paste, no manual userscript editing, no LNA/security-pref changes. Do not overwrite another tool's pump/service.
 
 The generated installer link expires after 15 minutes and is private. Re-run setup if it expires; this renews the installer link while keeping the pairing. Never publish the link or generated script, which contains the local pairing secret. It is not the generic template in the package.
 
@@ -39,7 +39,7 @@ The bridge uses a POST body and a pairing header through `GM_xmlhttpRequest` fro
 - Expired session: user signs into Outlook again, reloads, then doctor. No password enters the chat.
 - 403 or endpoint unavailable: explain the actual failure; do not promise a bypass. Microsoft has deprecated/decommissioned the public Outlook REST interface; a functioning OWA session is not a general support guarantee.
 - `pump stop`: stop/remove this skill's owned systemd service and generated pairing/token files. Then have the user remove the userscript in Tampermonkey.
-- `disconnect`: removes connection/OAuth cache only; to stop the new bridge, use `pump stop` too or it can reconnect on the next token.
+- `disconnect`: stops/removes this skill's own paired bridge if configured, then removes the saved connection/OAuth cache. It leaves an external token-file source or separate existing pump untouched. Remove this skill's userscript in Tampermonkey too.
 
 Tokens refresh only when the Outlook app makes authorised requests and the session stays valid. This is not a promise of permanently unattended mailbox access.
 

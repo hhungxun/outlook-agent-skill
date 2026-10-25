@@ -34,23 +34,28 @@ def make_plan(client, config, folder, limit, output=None):
     messages = client.list_messages(folder, limit)
     if not messages:
         raise ValueError('No messages matched the requested scope')
-    rows = []
+    rows, skipped = [], []
     for m in messages:
         if m.get('isDraft') or not m.get('internetMessageId'):
-            raise ValueError('Plans require non-draft messages with InternetMessageId for safe recovery')
+            skipped.append({'id': m.get('id'), 'subject': m.get('subject', ''),
+                            'reason': 'draft' if m.get('isDraft') else 'missing InternetMessageId'})
+            continue
         rows.append({'source_id': m['id'], 'original_folder_id': m['parentFolderId'],
                      'subject': m.get('subject', ''), 'received': m.get('receivedDateTime'),
                      'internet_message_id': m['internetMessageId'], 'original_is_read': m['isRead'], 'topic': None})
+    if not rows:
+        raise MailError('no_eligible_messages', 'No recoverable non-draft messages matched the scope; no mailbox changes made.')
     if len({r['source_id'] for r in rows}) != len(rows):
         raise ValueError('Duplicate source IDs in mailbox snapshot')
     plan_id = uuid.uuid4().hex
     plan = {'schema': 1, 'id': plan_id, 'account': config['account'], 'backend': config['backend'],
-            'created_utc': now(), 'scope': folder, 'messages': rows}
+            'created_utc': now(), 'scope': folder, 'messages': rows, 'skipped': skipped}
     path = Path(output).expanduser().absolute() if output else state_dir() / 'plans' / (plan_id + '.json')
     if path.exists():
         raise ValueError('Plan output already exists; choose a new path')
     write_json(path, plan)
-    return {'plan': str(path), 'count': len(rows), 'messages': rows, 'mutations': 0}
+    return {'plan': str(path), 'count': len(rows), 'messages': rows, 'mutations': 0,
+            'requested_limit': limit, 'skipped_count': len(skipped), 'skipped': skipped}
 
 
 def validate_plan(plan, config, require_topics=False):
@@ -128,7 +133,7 @@ def ensure_folder(client, name, journal, path):
         fid = matches[0]['id']
         journal['folders'][name] = {'id': fid, 'created': bool(item), 'status': 'available'}
     elif item:
-        raise MailError('uncertain_folder', 'Folder creation outcome is unknown; no duplicate was created. Inspect folders and journal.')
+        raise MailError('uncertain_folder', 'Folder creation outcome is unknown; no duplicate was created by this command. Inspect folders and journal.')
     else:
         journal['folders'][name] = {'status': 'create_requested'}
         write_json(path, journal)
@@ -191,8 +196,11 @@ def apply(client, config, plan_path):
         # Independent final re-read, including entries recovered from an interrupted run.
         for row in journal['messages']:
             m = same_message(client.message(row['new_id']), row)
-            if m['parentFolderId'] != row['destination_id'] or m['isRead'] != row['move_is_read']:
+            if m['parentFolderId'] != row['destination_id']:
                 raise MailError('verification_failed', 'Final move verification failed; inspect journal.')
+            # Immediate verification checked each new move's read preservation.
+            # Later reads by the user are legitimate and must not invalidate resume.
+            row['last_verified_is_read'] = m['isRead']
         for row in journal['messages']:
             row['status'] = 'verified'
         journal.update(phase='verified', completed_utc=now())
@@ -233,8 +241,9 @@ def undo(client, config, path):
                 raise MailError('verification_failed', 'Restore did not verify; inspect journal.')
         for row, _ in found:
             m = same_message(client.message(row['restored_id']), row)
-            if m['parentFolderId'] != row['original_folder_id'] or m['isRead'] != row['restore_is_read']:
+            if m['parentFolderId'] != row['original_folder_id']:
                 raise MailError('verification_failed', 'Final restore verification failed.')
+            row['last_verified_is_read'] = m['isRead']
         journal.update(phase='undone', undone_utc=now())
         write_json(path, journal)
         return {'restored': len(found), 'journal': str(path), 'empty_folders_deleted': False}

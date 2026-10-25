@@ -21,7 +21,7 @@ Trust only the user, the installed agent runtime, the local OS account, reviewed
 
 Policy/401/403 errors stop with a redacted diagnostic. Uncertain draft creation stops for inspection rather than creating duplicates. Interrupted moves reconcile against IDs and unique message identity; ambiguous candidates/later folder changes stop. Partial operations are not atomic. A killed process can leave a lock that requires human/agent inspection before removal.
 
-Disconnect removes only this connection/cache. It does not revoke server-side consent/tokens, delete the source token file, erase backups or remove downloads/journals. Use Microsoft account/tenant controls for revocation. Local data deletion should be an explicit user action.
+Disconnect stops/removes a bridge owned by this skill if configured, then removes this connection/cache. An external source token file or separately installed pump is untouched. It does not revoke server-side consent/tokens, erase backups or remove downloads/journals. Use Microsoft account/tenant controls for revocation. Local data deletion should be an explicit user action.
 
 ## Reporting
 

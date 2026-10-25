@@ -15,3 +15,11 @@ journals/
 build/
 dist/
 *.egg-info/
+.pi/
+pump.json
+pump-status.json
+session-token
+oauth-cache.json
+*.user.js
+receipts/
+plans/

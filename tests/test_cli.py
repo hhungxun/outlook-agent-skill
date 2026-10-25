@@ -30,6 +30,7 @@ class FakeMailbox:
         self.moves = 0
         self.calls = []
         self.fail_after_move = False
+        self.fail_after_folder = False
         self.next_link = None
 
     def __call__(self, method, url, token, payload=None):
@@ -45,6 +46,10 @@ class FakeMailbox:
         if path == 'me/mailFolders' and method == 'POST':
             fid = 'folder-' + str(len(self.folders))
             self.folders[fid] = payload['displayName']
+            if self.fail_after_folder:
+                self.fail_after_folder = False
+                from outlooklib.client import MailError
+                raise MailError('network_error', 'Folder response lost')
             return {'id': fid, 'displayName': payload['displayName']}
         parts = path.split('/')
         if len(parts) >= 4 and parts[:2] == ['me', 'mailFolders'] and parts[3] == 'messages':
@@ -139,6 +144,13 @@ class CliTest(unittest.TestCase):
         self.assertFalse(self.api.messages['one']['isRead'])
         self.assertNotIn(self.token.read_text(), json.dumps(result))
 
+    def test_inbox_listing_excludes_drafts(self):
+        self.connect()
+        self.api.messages['one']['isDraft'] = True
+        code, result = self.call('list', '--limit', '2')
+        self.assertEqual(code, 0, result)
+        self.assertEqual([m['id'] for m in result['messages']], ['two'])
+
     def test_search_and_read_keep_unread_state(self):
         self.connect()
         code, result = self.call('search', 'Seminar')
@@ -211,7 +223,7 @@ class CliTest(unittest.TestCase):
         original = self.api
         def losing_response(method, url, token, payload=None):
             result = original(method, url, token, payload)
-            if method == 'POST' and url.endswith('/createReply'):
+            if method == 'POST' and url.lower().endswith('/createreply'):
                 raise MailError('network_error', 'Lost response')
             return result
         self.api = losing_response

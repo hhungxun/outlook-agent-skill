@@ -9,9 +9,15 @@ GRAPH = 'https://graph.microsoft.com/v1.0'
 
 
 class RestMailbox(harness.FakeMailbox):
+    def __init__(self):
+        super().__init__()
+        self.rest_requests = []
+
     def __call__(self, method, url, token, payload=None):
         # Synthetic external REST server: casing and OData names differ from Graph.
-        graph_url = url.replace(REST, GRAPH).replace('InternetMessageId', 'internetMessageId')
+        self.rest_requests.append(url)
+        graph_url = (url.replace(REST, GRAPH).replace('InternetMessageId', 'internetMessageId')
+                     .replace('/createreplyall', '/createReplyAll').replace('/createreply', '/createReply'))
         if url == REST + '/me':
             self.calls.append((method, url, payload))
             return {'Id': 'account', 'EmailAddress': 'owner@example.test'}
@@ -31,6 +37,15 @@ class RestCliTest(harness.CliTest):
         self.assertEqual(code, 0, result)
         self.assertEqual(result['backend'], 'outlook-rest')
         return result
+
+    def test_rest_reply_uses_legacy_action_casing(self):
+        self.connect()
+        from pathlib import Path
+        body = Path(self.tmp.name) / 'body.txt'
+        body.write_text('Thanks.')
+        code, result = self.call('reply-draft', 'one', '--body-file', str(body), '--request-id', 'rest-route')
+        self.assertEqual(code, 0, result)
+        self.assertIn(REST + '/me/messages/one/createreply', self.api.rest_requests)
 
 
 class RestOrganisationTest(organisation.OrganisationTest):

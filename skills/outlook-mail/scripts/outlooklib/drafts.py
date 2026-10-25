@@ -37,7 +37,7 @@ def create(client, account, request_id, text, *, to=None, cc=None, subject=None,
             if receipt['fingerprint'] != digest:
                 raise ValueError('Request ID already used for different input/account; choose a new ID')
             if receipt['status'] != 'verified':
-                raise MailError('uncertain_draft', 'This request is incomplete/uncertain. Inspect the receipt and Outlook Drafts before retrying; no duplicate was created.')
+                raise MailError('uncertain_draft', 'This request is incomplete/uncertain. Inspect the receipt and Outlook Drafts before retrying; no duplicate was created by this command.')
             draft = client.message(receipt['draft_id'])
             if not draft.get('isDraft'):
                 raise MailError('draft_changed', 'The prior draft is no longer a draft; no new message created.')
@@ -50,8 +50,7 @@ def create(client, account, request_id, text, *, to=None, cc=None, subject=None,
                    'request_id': request_id, 'status': 'create_requested'}
         write_json(path, receipt)
         if source:
-            action = 'createReplyAll' if reply_all else 'createReply'
-            draft = client.call('POST', 'me/messages/' + quote(source, safe='') + '/' + action, {})
+            draft = client.reply_draft(source, reply_all)
         else:
             draft = client.call('POST', 'me/messages', {'subject': subject, 'toRecipients': to_recipients,
                                 'ccRecipients': cc_recipients, 'body': {'contentType': 'text', 'content': text}})

@@ -13,7 +13,8 @@ Use the bundled CLI, not ad-hoc mailbox requests. Resolve `scripts/run.py` relat
 
 1. Run `python3 <skill>/scripts/run.py doctor`.
 2. If not connected or expired, read [connection setup](references/setup.md). **Primary route: the user's existing Outlook Web session + Outlook REST**, intended for users whose Graph app consent is unavailable. Prefer an already working private token-file source; otherwise set up the paired passive userscript/helper. Graph login is optional, not the default. Let the agent perform setup; the user only supplies missing account information, approves the userscript and signs into Outlook. Keep credential contents out of prompts, command arguments and logs.
-3. Apply the matching workflow below. Success requires the CLI's verified result, not merely a request being accepted.
+3. Before running `pump setup --start`, explain that it installs an autostarting local user service and obtain the user's explicit approval. Reusing an existing token source needs no new service. If background startup is declined, offer the foreground helper.
+4. Apply the matching workflow below. Success requires the CLI's verified result, not merely a request being accepted.
 
 ## Read and search
 
