@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env*
+!.env.example
+*.token
+.owa-token
+*.log
+config.json
+cache/
+mail/
+attachments/
+journals/
+.coverage
+build/
+dist/
+*.egg-info/
